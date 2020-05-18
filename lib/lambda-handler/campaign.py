@@ -8,11 +8,11 @@ LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
  
  
-def main(event, context):
+def handler(event, context):
     LOG.info("EVENT: " + json.dumps(event))
  
     if event['body'] is not None:
-        body = event['body']
+        body = json.loads(event['body'])
     else:
         body = event
     
@@ -37,11 +37,13 @@ def create_short_url(body):
  
     # Parse targetUrl
     redirect_url = body['redirectUrl']
-    campaign_id = body['campaign_url']
+    campaign_id = body['campaignId']
  
-    client = boto3.client('dynamodb')
-    response = client.describe_table(table_name)
-    item_count = int(response['Table']['ItemCount'])
+    ddb = boto3.resource('dynamodb')
+    table = ddb.Table(table_name)
+    response = table.scan()
+
+    item_count = int(response['Count'])
 
     # Create a unique id
     id = item_count + 1
@@ -51,22 +53,24 @@ def create_short_url(body):
         'campaign_id': campaign_id
     }
 
+    
     # Create item in DynamoDB
-    response = client.put_item(
-        TableName=table_name,
+    response = table.put_item(
         Item=item
     )
   
+    print(response)
+
     return {
         'statusCode': 200,
-        'headers': {'Content-Type': 'application/json'},
+        'headers': {'Content-Type': 'text/plain'},
         'body': response
     }
  
  
 def redirect(event):
     # Parse redirect ID from path
-    id = event['pathParameters']['proxy']
+    id = int(event['pathParameters']['proxy'])
  
     # Pull out the DynamoDB table name from the environment
     table_name = os.environ.get('TABLE_NAME')
