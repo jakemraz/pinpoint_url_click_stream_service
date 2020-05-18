@@ -9,9 +9,6 @@ import datetime
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
 
-pinpoint_application_id = "<PUT_PINPOINT_APPLICATION_ID>"
-
-
 def handler(event, context):
     LOG.info("EVENT: " + json.dumps(event))
 
@@ -32,6 +29,7 @@ def create_short_url(body):
     # Parse targetUrl
     redirect_url = body['redirectUrl']
     campaign_id = body['campaignId']
+    pinpoint_application_id = body['pinpointApplicationId']
 
     ddb = boto3.resource('dynamodb')
     table = ddb.Table(table_name)
@@ -43,7 +41,8 @@ def create_short_url(body):
     item = {
         'id': id,
         'redirect_url': redirect_url,
-        'campaign_id': campaign_id
+        'campaign_id': campaign_id,
+        'pinpoint_application_id': pinpoint_application_id
     }
 
     # Create item in DynamoDB
@@ -85,7 +84,8 @@ def redirect(event):
         }
 
     # Put Pinpoint Event to mark as read this campaign
-    putPinpointEvent(id, endpoint_id)
+    pinpoint_application_id = item.get('pinpoint_application_id')
+    putPinpointEvent(pinpoint_application_id, id, endpoint_id)
 
     redirect_url = item.get('redirect_url')
     if redirect_url[:4] != "http":
@@ -101,7 +101,7 @@ def redirect(event):
         }
     }
 
-def putPinpointEvent(id, endpoint_id):
+def putPinpointEvent(pinpoint_application_id, id, endpoint_id):
 
     # Pull out the DynamoDB table name from the environment
     table_name = os.environ.get('TABLE_NAME')
