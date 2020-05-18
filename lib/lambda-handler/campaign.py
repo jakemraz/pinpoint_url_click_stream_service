@@ -3,9 +3,14 @@ import os
 import uuid
 import logging
 import boto3
+import time
+import datetime
  
 LOG = logging.getLogger()
 LOG.setLevel(logging.INFO)
+
+pinpoint_application_id = "<PUT_PINPOINT_APPLICATION_ID>"
+
 
 def handler(event, context):
     LOG.info("EVENT: " + json.dumps(event))
@@ -55,7 +60,12 @@ def create_short_url(body):
  
 def redirect(event):
     # Parse redirect ID from path
-    id = int(event['pathParameters']['proxy'])
+    proxy = event['pathParameters']['proxy']
+    parsed = proxy.split('/')
+    id = int(parsed[0])
+    endpoint_id = parsed[1] if len(parsed) > 1 else None
+
+    print(parsed)
 
     # Pull out the DynamoDB table name from the environment
     table_name = os.environ.get('TABLE_NAME')
@@ -74,9 +84,14 @@ def redirect(event):
             'body': 'No redirect found for ' + id
         }
 
+    # Put Pinpoint Event to mark as read this campaign
+    putPinpointEvent(id, endpoint_id)
+
     redirect_url = item.get('redirect_url')
     if redirect_url[:4] != "http":
         redirect_url = "http://" + redirect_url
+
+    print('redirect to ' + redirect_url)
 
     # Respond with a redirect
     return {
@@ -85,3 +100,55 @@ def redirect(event):
             'Location': redirect_url
         }
     }
+
+def putPinpointEvent(id, endpoint_id):
+
+    # Pull out the DynamoDB table name from the environment
+    table_name = os.environ.get('TABLE_NAME')
+
+    ddb = boto3.resource('dynamodb')
+    table = ddb.Table(table_name)
+    response = table.get_item(Key={'id': id})
+    item = response.get('Item', None)
+    if item is None:
+        return {
+            'statusCode': 400,
+            'headers': {'Content-Type': 'text/plain'},
+            'body': 'No redirect found for ' + id
+        }
+
+    campaign_id = item.get('campaign_id')
+
+    sec = int(time.time())
+    KST = datetime.timezone(datetime.timedelta(hours=9))
+    timestamp = datetime.datetime.fromtimestamp(sec, KST).isoformat()
+
+    events_request = {
+        'BatchItem': {}
+    }
+
+    batch_item = {
+        "Endpoint": {
+                    },
+        "Events": {
+            "key1": {
+                "EventType": "sms.click",
+                "Timestamp": timestamp,
+                "AppVersionCode": campaign_id
+            }
+        }
+    }
+    
+    events_request['BatchItem'][endpoint_id] = batch_item
+
+    client = boto3.client('pinpoint')
+    response = client.put_events(
+        ApplicationId=pinpoint_application_id,
+        EventsRequest=events_request
+    )
+    print('PutEvents response')
+    print(response)
+
+    return response
+
+
