@@ -85,7 +85,8 @@ def redirect(event):
 
     # Put Pinpoint Event to mark as read this campaign
     pinpoint_application_id = item.get('pinpoint_application_id')
-    put_pinpoint_event(pinpoint_application_id, id, endpoint_id)
+    campaign_name = item.get('campaign_name')
+    put_pinpoint_event(pinpoint_application_id, campaign_name, endpoint_id)
 
     redirect_url = item.get('redirect_url')
     if redirect_url[:4] != "http":
@@ -101,23 +102,7 @@ def redirect(event):
         }
     }
 
-def put_pinpoint_event(pinpoint_application_id, id, endpoint_id):
-
-    # Pull out the DynamoDB table name from the environment
-    table_name = os.environ.get('TABLE_NAME')
-
-    ddb = boto3.resource('dynamodb')
-    table = ddb.Table(table_name)
-    response = table.get_item(Key={'id': id})
-    item = response.get('Item', None)
-    if item is None:
-        return {
-            'statusCode': 400,
-            'headers': {'Content-Type': 'text/plain'},
-            'body': 'No redirect found for ' + id
-        }
-
-    campaign_name = item.get('campaign_name')
+def put_pinpoint_event(pinpoint_application_id, campaign_name, endpoint_id):
 
     sec = int(time.time())
     KST = datetime.timezone(datetime.timedelta(hours=9))
