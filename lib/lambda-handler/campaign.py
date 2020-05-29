@@ -85,7 +85,7 @@ def redirect(event):
 
     # Put Pinpoint Event to mark as read this campaign
     pinpoint_application_id = item.get('pinpoint_application_id')
-    putPinpointEvent(pinpoint_application_id, id, endpoint_id)
+    put_pinpoint_event(pinpoint_application_id, id, endpoint_id)
 
     redirect_url = item.get('redirect_url')
     if redirect_url[:4] != "http":
@@ -101,7 +101,7 @@ def redirect(event):
         }
     }
 
-def putPinpointEvent(pinpoint_application_id, id, endpoint_id):
+def put_pinpoint_event(pinpoint_application_id, id, endpoint_id):
 
     # Pull out the DynamoDB table name from the environment
     table_name = os.environ.get('TABLE_NAME')
