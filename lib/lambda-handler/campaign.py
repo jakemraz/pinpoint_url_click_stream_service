@@ -28,7 +28,7 @@ def create_short_url(body):
 
     # Parse targetUrl
     redirect_url = body['redirectUrl']
-    campaign_id = body['campaignId']
+    campaign_name = body['campaignName']
     pinpoint_application_id = body['pinpointApplicationId']
 
     ddb = boto3.resource('dynamodb')
@@ -41,7 +41,7 @@ def create_short_url(body):
     item = {
         'id': id,
         'redirect_url': redirect_url,
-        'campaign_id': campaign_id,
+        'campaign_name': campaign_name,
         'pinpoint_application_id': pinpoint_application_id
     }
 
@@ -117,7 +117,7 @@ def putPinpointEvent(pinpoint_application_id, id, endpoint_id):
             'body': 'No redirect found for ' + id
         }
 
-    campaign_id = item.get('campaign_id')
+    campaign_name = item.get('campaign_name')
 
     sec = int(time.time())
     KST = datetime.timezone(datetime.timedelta(hours=9))
@@ -134,7 +134,7 @@ def putPinpointEvent(pinpoint_application_id, id, endpoint_id):
             "key1": {
                 "EventType": "sms.click",
                 "Timestamp": timestamp,
-                "AppVersionCode": campaign_id
+                "AppVersionCode": campaign_name
             }
         }
     }
